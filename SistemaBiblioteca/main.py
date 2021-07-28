@@ -1,9 +1,7 @@
 import pymongo
 import time
 from pymongo import MongoClient
-from models import Livro
-from models import Adm
-from models import Visitante
+from models import *
 import random
 client= MongoClient('mongodb+srv://projeto:projeto@sistemabiblioteca.3o1zg.mongodb.net/myFirstDatabase?retryWrites=true&w=majority')
 db=client["SistemaBiblioteca"]
@@ -13,8 +11,7 @@ col3=db["Visitantes"]
 x=0 #variavel pra iniciar o looping principal
 y=0 #variavel pra iniciar o looping de cadastro adm
 z=0
-livro= Livro(x,x,x,x)
-acao= "nada"
+livro= Livro(x,x,x,x,x)
 keyadm= '050703' #senha para cadastro de adm
 adm= Adm('x','x')
 visit= Visitante('x')
@@ -30,8 +27,7 @@ while x==0:
             if keyadm==verifykey:
                 adm.setLogin(input('Digite o Login para cadastrar:\n'))
                 adm.setSenha(input('Digite a senha para cadastrar:\n'))
-                adms={"Login": adm.getLogin(), "Senha": adm.getSenha()}
-                col2.insert_one(adms)
+                addAdm(adm.getLogin(),adm.getSenha())
                 print("Cadastrado com sucesso!!")
                 y=1
             else:
@@ -51,21 +47,12 @@ while x==0:
                         "Sair(digite 'sair')\n"
                         "O que você quer fazer?\n")
                 if acao== 'cadastrar':
-                    conjid = tuple(range(99999, 999998))
-                    id = str(random.sample(conjid, 1))
-                    verify = col.find({"_id": id})
-                    for y in verify:
-                        while y==id:
-                            conjid = tuple(range(99999, 999998))
-                            id = str(random.sample(conjid, 1))
-                        if y!=id:
-                            break
+                    livro.setAdmreference(loginadm)  #usei o login de adm para fazer referencia
                     livro.setNome(input('Digite o nome do Livro:\n'))
                     livro.setAutor(input('Digite o nome do Autor:\n'))
                     livro.setAno(input('Digite o ano do Livro:\n'))
                     livro.setGenero(input('Digite o gênero do Livro:\n'))
-                    livros={'_id': id,'Nome do Livro': livro.getNome(),'Autor':livro.getAutor(), 'Ano': livro.getAno(),'Gênero': livro.getGenero()}
-                    col.insert_one(livros)
+                    addLivro(livro.getNome(),livro.getAutor(),livro.getAno(),livro.getGenero(), livro.getAdmreference())
                 elif acao== 'editar':
                     documents=col.find()
                     for i in documents:
@@ -78,22 +65,26 @@ while x==0:
                                 'O que deseja editar?\n')
                     if edit== 'livro':
                         livro.setNome(input('Digite o novo nome do Livro:\n'))
-                        col.update_one({"Nome do Livro": pesquisaed}, {"$set": {"Nome do Livro": livro.getNome()}})
+                        categoria= "Nome do Livro"
+                        editLivro(pesquisaed,categoria, livro.getNome())
                     elif edit=='autor':
                         livro.setAutor(input('Digite o novo nome do Autor:\n'))
-                        col.update_one({"Nome do Livro": pesquisaed}, {"$set": {"Autor": livro.getAutor()}})
+                        categoria= "Autor"
+                        editLivro(pesquisaed,categoria, livro.getAutor())
                     elif edit== 'ano':
                         livro.setAno(input('Digite o novo ano do Livro:\n'))
-                        col.update_one({"Nome do Livro": pesquisaed}, {"$set": {"Ano": livro.getAno()}})
+                        categoria= "Ano"
+                        editLivro(pesquisaed,categoria, livro.getAno())
                     elif edit== 'genero':
                         livro.setGenero(input('Digite o novo gênero do Livro:\n'))
-                    col.update_one({"Nome do Livro": pesquisaed}, {"$set": {"Gênero": livro.getGenero()}})
+                        categoria= "Gênero"
+                        editLivro(pesquisaed,categoria, livro.getGenero())
                 elif acao== 'excluir':
                     documents = col.find()
                     for i in documents:
                         print(i)
                     exc=(input('Digite o nome do livro que quer deletar:\n'))
-                    col.delete_one({"Nome do Livro": exc})
+                    excluirLivro(exc)
                 elif acao== 'lista':
                     documents = col.find()
                     for i in documents:
@@ -105,19 +96,17 @@ while x==0:
                                     'Quer pesquisar por qual categoria?\n')
                     if pesquisa== 'autor':
                         nomepesquisa=input('Digite o nome do Autor(com iniciais maiúsculas):\n')
-                        docpesquisa=col.find({"Autor": nomepesquisa})
-                        for i in docpesquisa:
-                            print(i)
+                        categoria= "Autor"
+                        pesquisaLivro(categoria,nomepesquisa)
                     if pesquisa== 'ano':
                         nomepesquisa=input('Digite o ano(com iniciais maiúsculas):\n')
                         docpesquisa=col.find({"Ano": nomepesquisa})
-                        for i in docpesquisa:
-                            print(i)
+                        categoria="Ano"
+                        pesquisaLivro(categoria,nomepesquisa)
                     if pesquisa== 'genero':
                         nomepesquisa=input('Digite o gênero(com iniciais maiúsculas):\n')
-                        docpesquisa=col.find({"Gênero": nomepesquisa})
-                        for i in docpesquisa:
-                            print(i)
+                        categoria= "Gênero"
+                        pesquisaLivro(categoria,nomepesquisa)
                 elif acao=="sair":
                     x = 1
                     break
@@ -130,7 +119,7 @@ while x==0:
 
     if login== "visitante":
         nomevisit=input('Digite seu nome COMPLETO:\n')
-        col3.insert_one({"Nome": nomevisit, "Hora e dia de entrada":time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())})
+        addVisit(nomevisit)
         visit=input("Ver lista de livros(digite 'lista')\n"
                     "Pesquisar livro por categoria(digite 'pesquisar')\n"
                     "Sair(digite 'sair')\n"
@@ -146,19 +135,17 @@ while x==0:
                              'Quer pesquisar por qual categoria?\n')
             if pesquisa == 'autor':
                 nomepesquisa = input('Digite o nome do Autor(com iniciais maiúsculas):\n')
-                docpesquisa = col.find({"Autor": nomepesquisa})
-                for i in docpesquisa:
-                    print(i)
+                categoria = "Autor"
+                pesquisaLivro(categoria, nomepesquisa)
             if pesquisa == 'ano':
                 nomepesquisa = input('Digite o ano(com iniciais maiúsculas):\n')
                 docpesquisa = col.find({"Ano": nomepesquisa})
-                for i in docpesquisa:
-                    print(i)
+                categoria = "Ano"
+                pesquisaLivro(categoria, nomepesquisa)
             if pesquisa == 'genero':
                 nomepesquisa = input('Digite o gênero(com iniciais maiúsculas):\n')
-                docpesquisa = col.find({"Gênero": nomepesquisa})
-                for i in docpesquisa:
-                    print(i)
+                categoria = "Gênero"
+                pesquisaLivro(categoria, nomepesquisa)
         if visit=="sair":
             break
         else:
